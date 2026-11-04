@@ -1,0 +1,66 @@
+[
+  {
+    "serial_number": "20213",
+    "full_name": "John Burke",
+    "email": "courtney09@smith.com",
+    "profile": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg/250px-Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg",
+    "phone": "(125)297-5573x02006",
+    "role": "admin"
+  },
+  {
+    "serial_number": "20214",
+    "full_name": "Christopher Vaughn",
+    "email": "ronnie27@hotmail.com",
+    "profile": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg/250px-Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg",
+    "phone": "953.058.1356x88033",
+    "role": "admin"
+  },
+  {
+    "serial_number": "20215",
+    "full_name": "Audrey Herrera",
+    "email": "martinezlinda@armstrong.net",
+    "profile": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF8oBXAeEU-dVCtzXZI-fGWPx3yZeROfTWHA&s",
+    "phone": "(773)400-4102",
+    "role": "admin"
+  },
+  {
+    "serial_number": "20216",
+    "full_name": "Johnathan Jordan",
+    "email": "wiseshelly@reed-anderson.com",
+    "profile": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg/250px-Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg",
+    "phone": "+1-171-723-9123x4532",
+    "role": "superadmin"
+  },
+  {
+    "serial_number": "20217",
+    "full_name": "Joshua Garcia",
+    "email": "hurstdiana@gmail.com",
+    "profile": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg/250px-Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg",
+    "phone": "001-020-074-0429x85591",
+    "role": "superadmin"
+  },
+  {
+    "serial_number": "20218",
+    "full_name": "Rachel Johnson",
+    "email": "elizabethflowers@frank.info",
+    "profile": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF8oBXAeEU-dVCtzXZI-fGWPx3yZeROfTWHA&s",
+    "phone": "001-691-080-8048x3125",
+    "role": "admin"
+  },
+  {
+    "serial_number": "20219",
+    "full_name": "Marcus Gill",
+    "email": "mannmaureen@mcintyre-york.biz",
+    "profile": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg/250px-Lionel_Messi_NE_Revolution_Inter_Miami_7.9.25-055.jpg",
+    "phone": "+1-310-284-4503",
+    "role": "admin"
+  },
+  {
+    "serial_number": "20220",
+    "full_name": "Rebecca Smith",
+    "email": "jgates@hotmail.com",
+    "profile": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF8oBXAeEU-dVCtzXZI-fGWPx3yZeROfTWHA&s",
+    "phone": "+1-948-720-6899x6848",
+    "role": "admin"
+  }
+]

@@ -1,0 +1,61 @@
+.mainBG {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #14091c 0%, #1d1029 100%);
+}
+
+
+.backLink {
+  color: #c9a84c !important;
+}
+
+.authCard {
+  /* background: linear-gradient(180deg, #3b254b 0%, #452168 100%); */
+  border: 1px solid #43255f;
+  box-shadow: 0px 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Input */
+.authCard .ant-input,
+.authCard .ant-input-password {
+  background: transparent !important;
+  border: 1px solid rgba(214, 181, 117, 0.4);
+  color: #fff !important;
+}
+
+.authCard .ant-input::placeholder {
+  color: #9ca3af;
+}
+
+.authCard .ant-input-password input {
+  background: transparent !important;
+  color: white !important;
+}
+
+.authCard .ant-input-affix-wrapper {
+  background: transparent !important;
+  border: 1px solid rgba(214, 181, 117, 0.4);
+  color: white;
+}
+
+.authCard .ant-input-affix-wrapper:hover,
+.authCard .ant-input-affix-wrapper-focused {
+  border-color: #d6b575 !important;
+  box-shadow: none !important;
+}
+
+/* Checkbox */
+.authCard .ant-checkbox-inner {
+  background: #d6b575 !important;
+  border-color: #d6b575 !important;
+}
+
+/* Button */
+.my-main-button {
+  background: #d6b575 !important;
+  border: none !important;
+  color: #1d1029 !important;
+}
+
+.my-main-button:hover {
+  background: #c9a75f !important;
+}
