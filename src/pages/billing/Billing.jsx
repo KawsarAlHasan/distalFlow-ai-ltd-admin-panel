@@ -1,15 +1,16 @@
-import React from "react";
-import { Button } from "antd";
+import React, { useState } from "react";
+import { Button, message, Spin } from "antd";
 import { FiExternalLink } from "react-icons/fi";
 import { HiOutlineExclamationCircle, HiOutlineClock } from "react-icons/hi2";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from "recharts";
 import RevenueByClinic from "./RevenueByClinic";
+import { useAdminBillingOverview, retryClinicPaymentApi } from "../../api/billingApi";
 
 // ---------------------------------------------------------------------------
-// Fake data
+// Fallback data
 // ---------------------------------------------------------------------------
 
-const statCards = [
+const defaultStatCards = [
   { label: "MRR", value: "£41,940", note: "+10.5%", noteColor: "#1F9D6B" },
   { label: "ARR (Run Rate)", value: "£503k", note: null },
   {
@@ -28,7 +29,7 @@ const statCards = [
 
 const TRACK_HEIGHT = 100;
 
-const mrrGrowth = [
+const defaultMrrGrowth = [
   { month: "Dec", value: 68 },
   { month: "Jan", value: 72 },
   { month: "Feb", value: 76 },
@@ -38,14 +39,14 @@ const mrrGrowth = [
   { month: "Jun", value: 97, latest: true },
 ].map((d) => ({ ...d, remainder: TRACK_HEIGHT - d.value }));
 
-const movement = [
+const defaultMovement = [
   { label: "New MRR (2 clinics)", value: "+£3,994", color: "#1F9D6B" },
   { label: "Expansion (upgrades)", value: "+£1,500", color: "#1F9D6B" },
   { label: "Contraction (downgrades)", value: "−£500", color: "#B0463B" },
   { label: "Churn (0 clinics)", value: "£0", color: "#141414" },
 ];
 
-const alerts = [
+const defaultAlerts = [
   {
     type: "error",
     title: "Maple Dental — payment failed",
@@ -106,8 +107,8 @@ function MovementRow({ label, value, color, bold }) {
   );
 }
 
-function AlertCard({ type, title, body, action }) {
-  const isError = type === "error";
+function AlertCard({ alert, onRetry, retryingId }) {
+  const isError = alert.type === "error";
   const Icon = isError ? HiOutlineExclamationCircle : HiOutlineClock;
   const styles = isError
     ? { bg: "#FBEAE8", border: "#F3D3CE", text: "#9B3B30", icon: "#B0463B" }
@@ -128,19 +129,23 @@ function AlertCard({ type, title, body, action }) {
             className="text-[14.5px] font-semibold"
             style={{ color: styles.text }}
           >
-            {title}
+            {alert.title}
           </div>
           <div
             className="text-[13.5px] mt-0.5"
             style={{ color: styles.text, opacity: 0.85 }}
           >
-            {body}
+            {alert.body}
           </div>
         </div>
       </div>
-      {action && (
-        <Button className="!rounded-lg !text-[13px] !font-medium !border-red-200 !text-red-600 !bg-white shrink-0">
-          {action}
+      {alert.action && (
+        <Button
+          loading={retryingId === alert.id}
+          onClick={() => onRetry?.(alert.id || "demo-clinic")}
+          className="!rounded-lg !text-[13px] !font-medium !border-red-200 !text-red-600 !bg-white shrink-0 hover:!bg-red-50"
+        >
+          {alert.action}
         </Button>
       )}
     </div>
@@ -152,6 +157,28 @@ function AlertCard({ type, title, body, action }) {
 // ---------------------------------------------------------------------------
 
 function Billing() {
+  const { billingData, isLoading, refetch } = useAdminBillingOverview();
+  const [retryingId, setRetryingId] = useState(null);
+
+  const statCards = billingData?.statCards || defaultStatCards;
+  const mrrGrowth = billingData?.mrrGrowth || defaultMrrGrowth;
+  const movement = billingData?.movement || defaultMovement;
+  const alerts = billingData?.alerts || defaultAlerts;
+  const revenueByClinic = billingData?.revenueByClinic;
+
+  const handleRetryPayment = async (clinicId) => {
+    try {
+      setRetryingId(clinicId);
+      await retryClinicPaymentApi(clinicId);
+      message.success("Payment retry triggered successfully");
+      refetch();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Failed to retry payment");
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
   return (
     <div>
       <div className="">
@@ -176,6 +203,13 @@ function Billing() {
             Open Stripe
           </Button> */}
         </div>
+
+        {/* Loading Spinner Indicator */}
+        {isLoading && (
+          <div className="py-2 text-center text-xs text-neutral-400">
+            <Spin size="small" className="mr-2" /> Loading latest billing metrics...
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -257,13 +291,18 @@ function Billing() {
             Attention required
           </h2>
           <div className="flex flex-col gap-3">
-            {alerts.map((a) => (
-              <AlertCard key={a.title} {...a} />
+            {alerts.map((a, idx) => (
+              <AlertCard
+                key={a.id || idx}
+                alert={a}
+                onRetry={handleRetryPayment}
+                retryingId={retryingId}
+              />
             ))}
           </div>
         </div>
 
-        <RevenueByClinic />
+        <RevenueByClinic data={revenueByClinic} />
       </div>
     </div>
   );

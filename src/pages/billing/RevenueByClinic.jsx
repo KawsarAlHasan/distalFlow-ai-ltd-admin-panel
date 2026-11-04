@@ -1,120 +1,146 @@
-import React from 'react'
-import { Table } from 'antd'
-import { FiDownload } from 'react-icons/fi'
+import React from "react";
+import { Table, message } from "antd";
+import { FiDownload } from "react-icons/fi";
+import { exportBillingStatementApi } from "../../api/billingApi";
 
-const dataSource = [
+const defaultDataSource = [
   {
-    key: '1',
-    clinic: 'Kensington Orthodontics',
-    plan: 'Pro',
-    mrr: '£2,997',
-    lifetime: '£17,982',
-    nextCharge: '18 Jun',
-    status: 'Active',
+    key: "1",
+    clinic: "Kensington Orthodontics",
+    plan: "Pro",
+    mrr: "£2,997",
+    lifetime: "£17,982",
+    nextCharge: "18 Jun",
+    status: "Active",
   },
   {
-    key: '2',
-    clinic: 'Bright Smile Dental',
-    plan: 'Growth',
-    mrr: '£1,997',
-    lifetime: '£7,988',
-    nextCharge: '1 Jul',
-    status: 'Active',
+    key: "2",
+    clinic: "Bright Smile Dental",
+    plan: "Growth",
+    mrr: "£1,997",
+    lifetime: "£7,988",
+    nextCharge: "1 Jul",
+    status: "Active",
   },
   {
-    key: '3',
-    clinic: 'Harbourside Dental',
-    plan: 'Growth',
-    mrr: '£1,997',
-    lifetime: '£9,985',
-    nextCharge: '1 Jul',
-    status: 'Active',
+    key: "3",
+    clinic: "Harbourside Dental",
+    plan: "Growth",
+    mrr: "£1,997",
+    lifetime: "£9,985",
+    nextCharge: "1 Jul",
+    status: "Active",
   },
   {
-    key: '4',
-    clinic: 'Maple Dental',
-    plan: 'Solo',
-    mrr: '£1,497',
-    lifetime: '£4,491',
-    nextCharge: '19 Jun',
-    status: 'Grace',
+    key: "4",
+    clinic: "Maple Dental",
+    plan: "Solo",
+    mrr: "£1,497",
+    lifetime: "£4,491",
+    nextCharge: "19 Jun",
+    status: "Grace",
   },
   {
-    key: '5',
-    clinic: 'Cathedral Dental',
-    plan: 'Solo',
-    mrr: '£1,497',
-    lifetime: '£2,994',
-    nextCharge: '5 Jul',
-    status: 'Active',
+    key: "5",
+    clinic: "Cathedral Dental",
+    plan: "Solo",
+    mrr: "£1,497",
+    lifetime: "£2,994",
+    nextCharge: "5 Jul",
+    status: "Active",
   },
-]
+];
 
 const planStyles = {
-  Pro: 'bg-orange-50 text-orange-500',
-  Growth: 'bg-violet-50 text-violet-500',
-  Solo: 'bg-emerald-50 text-emerald-500',
-}
+  Pro: "bg-orange-50 text-orange-500",
+  Growth: "bg-violet-50 text-violet-500",
+  Solo: "bg-emerald-50 text-emerald-500",
+  Enterprise: "bg-purple-50 text-purple-600",
+};
 
 const statusDotStyles = {
-  Active: 'bg-emerald-500',
-  Grace: 'bg-orange-500',
-}
+  Active: "bg-emerald-500",
+  Grace: "bg-orange-500",
+  Failed: "bg-red-500",
+  Pending: "bg-amber-400",
+};
 
 const statusTextStyles = {
-  Active: 'text-gray-700',
-  Grace: 'text-orange-500',
-}
+  Active: "text-gray-700",
+  Grace: "text-orange-500",
+  Failed: "text-red-500",
+  Pending: "text-amber-600",
+};
 
 const columns = [
   {
-    title: 'Clinic',
-    dataIndex: 'clinic',
-    key: 'clinic',
+    title: "Clinic",
+    dataIndex: "clinic",
+    key: "clinic",
     render: (text) => <span className="text-[15px] font-semibold text-gray-900">{text}</span>,
   },
   {
-    title: 'Plan',
-    dataIndex: 'plan',
-    key: 'plan',
+    title: "Plan",
+    dataIndex: "plan",
+    key: "plan",
     render: (plan) => (
-      <span className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-semibold ${planStyles[plan]}`}>
+      <span className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-semibold ${planStyles[plan] || "bg-gray-50 text-gray-700"}`}>
         {plan}
       </span>
     ),
   },
   {
-    title: 'MRR',
-    dataIndex: 'mrr',
-    key: 'mrr',
+    title: "MRR",
+    dataIndex: "mrr",
+    key: "mrr",
     render: (text) => <span className="text-sm text-gray-900">{text}</span>,
   },
   {
-    title: 'Lifetime',
-    dataIndex: 'lifetime',
-    key: 'lifetime',
+    title: "Lifetime",
+    dataIndex: "lifetime",
+    key: "lifetime",
     render: (text) => <span className="text-sm text-gray-500">{text}</span>,
   },
   {
-    title: 'Next Charge',
-    dataIndex: 'nextCharge',
-    key: 'nextCharge',
+    title: "Next Charge",
+    dataIndex: "nextCharge",
+    key: "nextCharge",
     render: (text) => <span className="text-sm text-gray-500">{text}</span>,
   },
   {
-    title: 'Status',
-    dataIndex: 'status',
-    key: 'status',
+    title: "Status",
+    dataIndex: "status",
+    key: "status",
     render: (status) => (
-      <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${statusTextStyles[status]}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${statusDotStyles[status]}`} />
+      <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${statusTextStyles[status] || "text-gray-700"}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${statusDotStyles[status] || "bg-gray-400"}`} />
         {status}
       </span>
     ),
   },
-]
+];
 
-export default function RevenueByClinic() {
+export default function RevenueByClinic({ data = defaultDataSource }) {
+  const handleDownloadStatement = async () => {
+    try {
+      const statement = await exportBillingStatementApi();
+      // Format as CSV
+      const headers = ["Clinic Name,Trading Company,Plan,Monthly Fee (£),Status,Total Paid (£)"];
+      const rows = statement.map((s) => `"${s.clinicName || ""}","${s.tradingCompany || ""}","${s.plan}",${s.monthlyFee},"${s.status}",${s.totalPaid}`);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `billing-statement-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      message.success("Statement downloaded successfully");
+    } catch (err) {
+      message.error("Failed to download statement");
+    }
+  };
+
   return (
     <div className="w-full rounded-2xl border border-gray-100 bg-white p-6 shadow-sm mt-4">
       {/* Header */}
@@ -122,7 +148,8 @@ export default function RevenueByClinic() {
         <h2 className="text-lg font-semibold text-gray-900">Revenue by clinic</h2>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          onClick={handleDownloadStatement}
+          className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 cursor-pointer"
         >
           <FiDownload className="h-4 w-4" />
           Statement
@@ -132,7 +159,7 @@ export default function RevenueByClinic() {
       {/* Antd Table */}
       <Table
         columns={columns}
-        dataSource={dataSource}
+        dataSource={data}
         pagination={false}
         className="revenue-clinic-table"
       />
@@ -167,5 +194,5 @@ export default function RevenueByClinic() {
         }
       `}</style>
     </div>
-  )
+  );
 }

@@ -1,4 +1,3 @@
-// frontend and fake data:
 import React, { useMemo, useState } from "react";
 import {
   Tag,
@@ -15,6 +14,7 @@ import {
   Popconfirm,
   Empty,
   message,
+  Spin,
 } from "antd";
 import {
   RiBuilding2Line,
@@ -31,13 +31,20 @@ import {
   RiFileList3Line,
   RiAlertLine,
   RiCheckboxCircleLine,
+  RiDeleteBinLine,
 } from "react-icons/ri";
+import {
+  usePlanData,
+  useOverridesData,
+  usePlanAuditLog,
+  createPriceApi,
+  migrateSubscribersApi,
+  createOverrideApi,
+  deleteOverrideApi,
+} from "../../api/planApi";
 
 /* ------------------------------------------------------------------ */
-/*  Fake data layer — nothing here talks to Stripe or a database.     */
-/*  Every write goes through local state so the flow behaves like the */
-/*  real thing (new Price object → optional migration → audit entry)  */
-/*  without touching anything live.                                   */
+/*  Fallback / Seed data                                              */
 /* ------------------------------------------------------------------ */
 
 const seedTiers = [
@@ -194,17 +201,24 @@ const gbp = (n) =>
     style: "currency",
     currency: "GBP",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(n || 0);
+
+const tierIcons = {
+  solo: <RiBuilding2Line />,
+  growth: <RiRocketLine />,
+  pro: <RiVipCrownLine />,
+  enterprise: <RiGlobalLine />,
+};
 
 /* ------------------------------------------------------------------ */
 
 function TierOverviewCard({ tier, onUpdatePrice, onMigrate }) {
-  const active = tier.history.find((h) => h.status === "active");
-  const legacy = tier.history.filter((h) => h.status === "legacy");
-  const totalSubs = tier.history.reduce((s, h) => s + h.subscribers, 0);
+  const active = tier.history?.find((h) => h.status === "active") || { amount: 0, setup: 0, subscribers: 0 };
+  const legacy = tier.history?.filter((h) => h.status === "legacy") || [];
+  const totalSubs = tier.history?.reduce((s, h) => s + (h.subscribers || 0), 0) || 0;
 
   return (
-    <div className="relative flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="relative flex flex-col rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
       <div className="h-1" style={{ backgroundColor: tier.accent }} />
       <div className="p-5 flex-1 flex flex-col gap-4">
         <div className="flex items-start justify-between">
@@ -216,7 +230,7 @@ function TierOverviewCard({ tier, onUpdatePrice, onMigrate }) {
                 color: tier.accent,
               }}
             >
-              {tier.icon}
+              {tierIcons[tier.key] || <RiBuilding2Line />}
             </div>
             <div>
               <div className="font-semibold text-slate-900 leading-tight">
@@ -266,7 +280,7 @@ function TierOverviewCard({ tier, onUpdatePrice, onMigrate }) {
         <div className="flex items-center justify-between text-sm pt-1">
           <span className="text-slate-500">Subscribers at this price</span>
           <span className="font-semibold text-slate-900 tabular-nums">
-            {active.subscribers}
+            {active.subscribers || 0}
           </span>
         </div>
 
@@ -274,7 +288,7 @@ function TierOverviewCard({ tier, onUpdatePrice, onMigrate }) {
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 flex items-start gap-2">
             <RiHistoryLine className="mt-0.5 shrink-0" />
             <span>
-              {legacy.reduce((s, l) => s + l.subscribers, 0)} subscriber(s)
+              {legacy.reduce((s, l) => s + (l.subscribers || 0), 0)} subscriber(s)
               still on legacy price
               {legacy.length > 1 ? "s" : ""} (
               {legacy.map((l) => gbp(l.amount)).join(", ")})
@@ -312,8 +326,22 @@ function TierOverviewCard({ tier, onUpdatePrice, onMigrate }) {
 
 function UpdatePriceModal({ tier, open, onClose, onCreate }) {
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
   if (!tier) return null;
+
+  const handleFinish = async (values) => {
+    try {
+      setLoading(true);
+      await onCreate(tier.key, values.amount, values.setup);
+      form.resetFields();
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Modal
@@ -321,6 +349,7 @@ function UpdatePriceModal({ tier, open, onClose, onCreate }) {
       open={open}
       onCancel={onClose}
       onOk={() => form.submit()}
+      confirmLoading={loading}
       okText="Create new Stripe price"
       destroyOnClose
     >
@@ -333,14 +362,10 @@ function UpdatePriceModal({ tier, open, onClose, onCreate }) {
         form={form}
         layout="vertical"
         initialValues={{
-          amount: tier.history.find((h) => h.status === "active")?.amount,
-          setup: tier.history.find((h) => h.status === "active")?.setup,
+          amount: tier.history?.find((h) => h.status === "active")?.amount,
+          setup: tier.history?.find((h) => h.status === "active")?.setup,
         }}
-        onFinish={(values) => {
-          onCreate(tier.key, values.amount, values.setup);
-          form.resetFields();
-          onClose();
-        }}
+        onFinish={handleFinish}
       >
         <Form.Item
           label="Monthly price (£)"
@@ -363,9 +388,27 @@ function UpdatePriceModal({ tier, open, onClose, onCreate }) {
 
 function MigrateModal({ tier, open, onClose, onMigrate }) {
   const [mode, setMode] = useState("migrate");
+  const [loading, setLoading] = useState(false);
   if (!tier) return null;
-  const legacy = tier.history.filter((h) => h.status === "legacy");
-  const active = tier.history.find((h) => h.status === "active");
+  const legacy = tier.history?.filter((h) => h.status === "legacy") || [];
+  const active = tier.history?.find((h) => h.status === "active") || { amount: 0 };
+
+  const handleConfirm = async (legacyPriceId) => {
+    try {
+      setLoading(true);
+      await onMigrate(tier.key, legacyPriceId, mode);
+      message.success(
+        mode === "migrate"
+          ? "Subscribers migrated"
+          : "Price grandfathered",
+      );
+      onClose();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Migration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Modal
@@ -412,17 +455,9 @@ function MigrateModal({ tier, open, onClose, onMigrate }) {
               }
               okText="Confirm"
               cancelText="Cancel"
-              onConfirm={() => {
-                onMigrate(tier.key, l.id, mode);
-                message.success(
-                  mode === "migrate"
-                    ? "Subscribers migrated"
-                    : "Price grandfathered",
-                );
-                onClose();
-              }}
+              onConfirm={() => handleConfirm(l.id)}
             >
-              <Button danger={mode === "migrate"} block icon={<RiAlertLine />}>
+              <Button loading={loading} danger={mode === "migrate"} block icon={<RiAlertLine />}>
                 {mode === "migrate"
                   ? "Migrate this group"
                   : "Grandfather this group"}
@@ -438,9 +473,10 @@ function MigrateModal({ tier, open, onClose, onMigrate }) {
   );
 }
 
-function OverridesPanel({ overrides, tiers, onAdd }) {
+function OverridesPanel({ overrides, tiers, onAdd, onDelete }) {
   const [form] = Form.useForm();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const columns = [
     {
@@ -453,7 +489,7 @@ function OverridesPanel({ overrides, tiers, onAdd }) {
       title: "Tier",
       dataIndex: "tier",
       key: "tier",
-      render: (v) => <Tag>{tiers.find((t) => t.key === v)?.name}</Tag>,
+      render: (v) => <Tag>{tiers.find((t) => t.key === v)?.name || v}</Tag>,
     },
     {
       title: "Standard price",
@@ -483,14 +519,57 @@ function OverridesPanel({ overrides, tiers, onAdd }) {
     },
     {
       title: "",
-      key: "flag",
-      render: () => (
-        <Tag color="gold" className="flex items-center gap-1 w-fit">
-          <RiPriceTag3Line /> Custom price
-        </Tag>
+      key: "actions",
+      render: (_, record) => (
+        <div className="flex items-center gap-2 justify-end">
+          <Tag color="gold" className="flex items-center gap-1 w-fit !m-0">
+            <RiPriceTag3Line /> Custom price
+          </Tag>
+          {onDelete && (
+            <Popconfirm
+              title="Remove override?"
+              description="Standard price will apply for this clinic."
+              onConfirm={() => onDelete(record.id)}
+              okText="Remove"
+              cancelText="Cancel"
+            >
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<RiDeleteBinLine />}
+                className="hover:!bg-red-50"
+              />
+            </Popconfirm>
+          )}
+        </div>
       ),
     },
   ];
+
+  const handleFinish = async (values) => {
+    try {
+      setLoading(true);
+      const standard =
+        tiers
+          .find((t) => t.key === values.tier)
+          ?.history?.find((h) => h.status === "active")?.amount ?? 0;
+      await onAdd({
+        clinicName: values.clinic,
+        tier: values.tier,
+        standardPrice: standard,
+        overridePrice: values.overridePrice,
+        reason: values.reason,
+      });
+      form.resetFields();
+      setOpen(false);
+      message.success("Override applied successfully");
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Failed to apply override");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -503,6 +582,7 @@ function OverridesPanel({ overrides, tiers, onAdd }) {
           type="primary"
           icon={<RiUserSettingsLine />}
           onClick={() => setOpen(true)}
+          className="!bg-slate-900 hover:!bg-slate-800"
         >
           Add override
         </Button>
@@ -519,37 +599,23 @@ function OverridesPanel({ overrides, tiers, onAdd }) {
         open={open}
         onCancel={() => setOpen(false)}
         onOk={() => form.submit()}
+        confirmLoading={loading}
         okText="Apply via Stripe"
         destroyOnClose
       >
         <Form
           form={form}
           layout="vertical"
-          onFinish={(values) => {
-            const standard =
-              tiers
-                .find((t) => t.key === values.tier)
-                ?.history.find((h) => h.status === "active")?.amount ?? 0;
-            onAdd({
-              clinic: values.clinic,
-              tier: values.tier,
-              standardPrice: standard,
-              overridePrice: values.overridePrice,
-              reason: values.reason,
-            });
-            form.resetFields();
-            setOpen(false);
-            message.success("Override applied");
-          }}
+          onFinish={handleFinish}
         >
           <Form.Item
             label="Clinic name"
             name="clinic"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: "Clinic name is required" }]}
           >
             <Input placeholder="e.g. Riverside Dental Group" />
           </Form.Item>
-          <Form.Item label="Tier" name="tier" rules={[{ required: true }]}>
+          <Form.Item label="Tier" name="tier" rules={[{ required: true, message: "Please select a tier" }]}>
             <Select
               options={tiers.map((t) => ({ value: t.key, label: t.name }))}
             />
@@ -557,14 +623,14 @@ function OverridesPanel({ overrides, tiers, onAdd }) {
           <Form.Item
             label="Override price (£/mo)"
             name="overridePrice"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: "Please enter override price" }]}
           >
             <InputNumber className="w-full" min={0} step={50} />
           </Form.Item>
           <Form.Item
             label="Reason (internal note)"
             name="reason"
-            rules={[{ required: true }]}
+            rules={[{ required: true, message: "Please provide a reason" }]}
           >
             <Input placeholder="e.g. Founding partner rate" />
           </Form.Item>
@@ -626,129 +692,78 @@ function AuditLogPanel({ entries }) {
 /* ------------------------------------------------------------------ */
 
 export default function Plans() {
-  const [tiers, setTiers] = useState(seedTiers);
-  const [overrides, setOverrides] = useState(seedOverrides);
-  const [audit, setAudit] = useState(seedAudit);
+  const { allPlan, isLoading: plansLoading, refetch: refetchPlans } = usePlanData();
+  const { overrides: apiOverrides, isLoading: overridesLoading, refetch: refetchOverrides } = useOverridesData();
+  const { auditLog: apiAudit, isLoading: auditLoading, refetch: refetchAudit } = usePlanAuditLog();
 
   const [priceModalTier, setPriceModalTier] = useState(null);
   const [migrateModalTier, setMigrateModalTier] = useState(null);
 
+  const tiers = useMemo(() => {
+    if (allPlan && allPlan.length > 0) {
+      return allPlan.map((p) => ({
+        ...p,
+        icon: tierIcons[p.key] || <RiBuilding2Line />,
+      }));
+    }
+    return seedTiers;
+  }, [allPlan]);
+
+  const overrides = apiOverrides && apiOverrides.length > 0 ? apiOverrides : seedOverrides;
+  const audit = apiAudit && apiAudit.length > 0 ? apiAudit : seedAudit;
+
   const totalActiveSubs = useMemo(
     () =>
       tiers.reduce(
-        (s, t) => s + t.history.reduce((s2, h) => s2 + h.subscribers, 0),
+        (s, t) => s + (t.history?.reduce((s2, h) => s2 + (h.subscribers || 0), 0) || 0),
         0,
       ),
     [tiers],
   );
 
-  const handleCreatePrice = (tierKey, amount, setup) => {
-    setTiers((prev) =>
-      prev.map((t) => {
-        if (t.key !== tierKey) return t;
-        const newEntry = {
-          id: `price_${tierKey}_${Date.now()}`,
-          amount,
-          setup,
-          createdAt: new Date().toISOString().slice(0, 10),
-          status: "active",
-          subscribers: 0,
-        };
-        return {
-          ...t,
-          history: [
-            newEntry,
-            ...t.history.map((h) =>
-              h.status === "active" ? { ...h, status: "legacy" } : h,
-            ),
-          ],
-        };
-      }),
-    );
-    const tier = tiers.find((t) => t.key === tierKey);
-    const prevActive = tier.history.find((h) => h.status === "active");
-    setAudit((prev) => [
-      {
-        id: `a_${Date.now()}`,
-        admin: "You",
-        action: "New price created",
-        tier: tier.name,
-        previous: prevActive ? `${gbp(prevActive.amount)}/mo` : "—",
-        next: `${gbp(amount)}/mo`,
-        affected: "New sign-ups only",
-        timestamp: new Date().toLocaleString("en-GB").replace(",", ""),
-      },
-      ...prev,
-    ]);
-    message.success("New Stripe price created — applies to new sign-ups only");
+  const handleCreatePrice = async (tierKey, amount, setup) => {
+    try {
+      await createPriceApi({ planType: tierKey, amount, setupFee: setup });
+      message.success("New Stripe price created — applies to new sign-ups only");
+      refetchPlans();
+      refetchAudit();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Failed to create price");
+      throw err;
+    }
   };
 
-  const handleMigrate = (tierKey, priceId, mode) => {
-    setTiers((prev) =>
-      prev.map((t) => {
-        if (t.key !== tierKey) return t;
-        if (mode === "grandfather") {
-          return {
-            ...t,
-            history: t.history.map((h) =>
-              h.id === priceId ? { ...h, status: "legacy" } : h,
-            ),
-          };
-        }
-        const legacyEntry = t.history.find((h) => h.id === priceId);
-        const activeEntry = t.history.find((h) => h.status === "active");
-        if (!legacyEntry || !activeEntry) return t;
-        return {
-          ...t,
-          history: t.history.map((h) => {
-            if (h.id === activeEntry.id)
-              return {
-                ...h,
-                subscribers: h.subscribers + legacyEntry.subscribers,
-              };
-            if (h.id === legacyEntry.id) return { ...h, subscribers: 0 };
-            return h;
-          }),
-        };
-      }),
-    );
-    const tier = tiers.find((t) => t.key === tierKey);
-    const legacyEntry = tier.history.find((h) => h.id === priceId);
-    const activeEntry = tier.history.find((h) => h.status === "active");
-    setAudit((prev) => [
-      {
-        id: `a_${Date.now()}`,
-        admin: "You",
-        action:
-          mode === "migrate" ? "Subscribers migrated" : "Price grandfathered",
-        tier: tier.name,
-        previous: legacyEntry ? `${gbp(legacyEntry.amount)}/mo` : "—",
-        next:
-          mode === "migrate"
-            ? `${activeEntry ? gbp(activeEntry.amount) : "—"}/mo`
-            : `${legacyEntry ? gbp(legacyEntry.amount) : "—"}/mo (locked)`,
-        affected: `${legacyEntry?.subscribers ?? 0} subscriber(s)`,
-        timestamp: new Date().toLocaleString("en-GB").replace(",", ""),
-      },
-      ...prev,
-    ]);
+  const handleMigrate = async (tierKey, priceId, mode) => {
+    try {
+      await migrateSubscribersApi({ planType: tierKey, priceId, mode });
+      refetchPlans();
+      refetchAudit();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Migration failed");
+      throw err;
+    }
   };
 
-  const handleAddOverride = (o) => {
-    setOverrides((prev) => [{ ...o, id: `ov_${Date.now()}` }, ...prev]);
-    setAudit((prev) => [
-      {
-        id: `a_${Date.now()}`,
-        admin: "You",
-        action: "Per-clinic override applied",
-        tier: tiers.find((t) => t.key === o.tier)?.name ?? o.tier,
-        previous: `${gbp(o.standardPrice)}/mo`,
-        next: `${gbp(o.overridePrice)}/mo`,
-        affected: o.clinic,
-        timestamp: new Date().toLocaleString("en-GB").replace(",", ""),
-      },
-      ...prev,
-    ]);
+  const handleAddOverride = async (o) => {
+    try {
+      await createOverrideApi(o);
+      refetchOverrides();
+      refetchAudit();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Failed to apply override");
+      throw err;
+    }
+  };
+
+  const handleDeleteOverride = async (overrideId) => {
+    try {
+      await deleteOverrideApi(overrideId);
+      message.success("Override removed");
+      refetchOverrides();
+      refetchAudit();
+    } catch (err) {
+      message.error(err?.response?.data?.message || "Failed to remove override");
+    }
   };
 
   return (
@@ -768,6 +783,11 @@ export default function Plans() {
               directly.
             </p>
           </div>
+          {plansLoading && (
+            <div className="text-xs text-neutral-400 flex items-center gap-1.5">
+              <Spin size="small" /> Syncing with Stripe...
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -807,6 +827,7 @@ export default function Plans() {
                     overrides={overrides}
                     tiers={tiers}
                     onAdd={handleAddOverride}
+                    onDelete={handleDeleteOverride}
                   />
                 ),
               },
