@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Input, Button, message, Progress } from "antd";
+import { Form, Input, Button, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import {
   EyeInvisibleOutlined,
@@ -30,18 +30,22 @@ const SetNewPassword = () => {
       });
 
       // Clear reset-related data
-      localStorage.setItem("token", response.data.data.token);
+      const token = response.data?.data?.token || response.data?.data;
+      if (token && typeof token === "string") {
+        localStorage.setItem("token", token);
+      }
       localStorage.removeItem("email");
       localStorage.removeItem("otp");
 
       // Show success message
       message.success("Password has been reset successfully!");
 
-      // Redirect to the dashboard
+      // Redirect to dashboard or login
       setTimeout(() => {
         window.location.href = "/";
       }, 500);
     } catch (error) {
+      console.error(error);
       message.error(
         error.response?.data?.message ||
           "Failed to reset password. Please try again.",
@@ -82,8 +86,7 @@ const SetNewPassword = () => {
 
         {/* Subtitle */}
         <p className="text-center text-[#A1A1AA] text-[16px] mb-5 lg:mb-10">
-          Your new password must be different from previously used passwords for
-          security
+          Your new password must be at least 6 characters long
         </p>
 
         {/* Form */}
@@ -104,9 +107,8 @@ const SetNewPassword = () => {
             rules={[
               { required: true, message: "Password is required." },
               {
-                pattern: /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                message:
-                  "At least 8 chars, 1 uppercase, 1 number & 1 special char",
+                min: 6,
+                message: "Password must be at least 6 characters",
               },
             ]}
           >
@@ -183,7 +185,7 @@ const SetNewPassword = () => {
             onClick={() => navigate("/login")}
             className={`text-[14px] backLink`}
           >
-            ← Back to Login
+            &larr; Back to Login
           </Button>
         </div>
       </div>

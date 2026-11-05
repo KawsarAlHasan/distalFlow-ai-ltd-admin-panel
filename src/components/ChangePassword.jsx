@@ -1,24 +1,33 @@
 import { useState } from "react";
 import { Button, Modal, Form, Input, message } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, LockOutlined } from "@ant-design/icons";
 import { API } from "../api/api";
 
 const ChangePassword = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
 
   const showModal = () => setIsModalOpen(true);
-  const handleCancel = () => setIsModalOpen(false);
+  const handleCancel = () => {
+    form.resetFields();
+    setIsModalOpen(false);
+  };
 
   const handleFinish = async (values) => {
     try {
       setLoading(true);
 
-      await API.put("/auth/admin/change-password", values);
+      await API.put("/auth/admin/change-password", {
+        oldPassword: values.oldPassword,
+        newPassword: values.newPassword,
+      });
 
       message.success("Password changed successfully!");
+      form.resetFields();
       setIsModalOpen(false);
     } catch (err) {
+      console.error(err);
       message.error(err.response?.data?.message || "Failed to change password");
     } finally {
       setLoading(false);
@@ -31,43 +40,58 @@ const ChangePassword = () => {
         onClick={showModal}
         className="flex items-center gap-2 px-1 py-2 cursor-pointer"
       >
-        <SettingOutlined /> Change Password
+        <SettingOutlined />
+        <span>Change Password</span>
       </div>
 
       <Modal
         title="Change Password"
         open={isModalOpen}
         onCancel={handleCancel}
-        footer={null} // we'll use Form submit button instead
+        footer={null}
+        destroyOnClose
+        width={460}
       >
-        <Form layout="vertical" onFinish={handleFinish}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleFinish}
+          className="mt-4"
+        >
           <Form.Item
-            label="Old Password"
+            label="Current Password"
             name="oldPassword"
             rules={[
-              { required: true, message: "Please enter your old password" },
+              { required: true, message: "Please enter your current password" },
             ]}
           >
-            <Input.Password placeholder="Enter your old password" />
+            <Input.Password
+              prefix={<LockOutlined className="text-gray-400" />}
+              placeholder="Enter current password"
+              className="h-10 rounded-lg"
+            />
           </Form.Item>
 
           <Form.Item
             label="New Password"
             name="newPassword"
             rules={[
-              { required: true, message: "Password is required." },
+              { required: true, message: "New password is required" },
               {
-                pattern: /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                message:
-                  "At least 8 chars, 1 uppercase, 1 number & 1 special char",
+                min: 6,
+                message: "Password must be at least 6 characters long",
               },
             ]}
           >
-            <Input.Password placeholder="Enter your new password" />
+            <Input.Password
+              prefix={<LockOutlined className="text-gray-400" />}
+              placeholder="Enter new password (min. 6 characters)"
+              className="h-10 rounded-lg"
+            />
           </Form.Item>
 
           <Form.Item
-            label="Retype New Password"
+            label="Confirm New Password"
             name="retype_new_password"
             dependencies={["newPassword"]}
             rules={[
@@ -82,19 +106,23 @@ const ChangePassword = () => {
               }),
             ]}
           >
-            <Input.Password placeholder="Retype your new password" />
+            <Input.Password
+              prefix={<LockOutlined className="text-gray-400" />}
+              placeholder="Confirm new password"
+              className="h-10 rounded-lg"
+            />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item className="mt-6 mb-0">
             <Button
               type="primary"
-              className="my-main-button"
+              className="my-main-button w-full h-11 rounded-lg font-semibold"
               htmlType="submit"
               size="large"
               loading={loading}
               block
             >
-              Change Password
+              {loading ? "Updating..." : "Update Password"}
             </Button>
           </Form.Item>
         </Form>
