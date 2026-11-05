@@ -15,9 +15,10 @@ import Leads from "../pages/leads/Leads";
 import Billing from "../pages/billing/Billing";
 import Exclusivity from "../pages/exclusivity/Exclusivity";
 import Settings from "../pages/settings/Settings";
-
 import NotFound from "../components/NotFound";
 import Plans from "../pages/plans/Plans";
+import TermsManagement from "../pages/legal/TermsManagement";
+import PrivacyManagement from "../pages/legal/PrivacyManagement";
 
 export const router = createBrowserRouter([
   {
@@ -51,7 +52,6 @@ export const router = createBrowserRouter([
       {
         path: "/",
         element: <Dashboard />,
-        // element: <DashboardOrRedirect />,
       },
       {
         path: "/clinics",
@@ -76,6 +76,14 @@ export const router = createBrowserRouter([
       {
         path: "/settings",
         element: <Settings />,
+      },
+      {
+        path: "/terms-management",
+        element: <TermsManagement />,
+      },
+      {
+        path: "/privacy-management",
+        element: <PrivacyManagement />,
       },
     ],
   },

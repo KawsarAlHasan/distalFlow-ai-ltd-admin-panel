@@ -16,6 +16,8 @@ import {
   RiMenuLine,
   RiCloseLine,
   RiVipCrownLine,
+  RiFileTextLine,
+  RiShieldCheckLine,
 } from "react-icons/ri";
 import { IoIosLogOut } from "react-icons/io";
 import { useAdmin } from "../../context/AdminContext";
@@ -51,6 +53,21 @@ export default function SidebarContent({ onClose }) {
         { label: "Settings", path: "/settings", icon: RiSettings3Line },
       ],
     },
+    {
+      section: "Legal & Policy",
+      links: [
+        {
+          label: "Terms of Service",
+          path: "/terms-management",
+          icon: RiFileTextLine,
+        },
+        {
+          label: "Privacy Policy",
+          path: "/privacy-management",
+          icon: RiShieldCheckLine,
+        },
+      ],
+    },
   ];
 
   const handleLogout = () => {
@@ -66,7 +83,6 @@ export default function SidebarContent({ onClose }) {
           src="/images/hero-horizontal-1.png"
           alt="logo"
           className="pt-2 pr-3"
-          // className="w-[222px] h-[80px] lg:w-[331px] lg:h-[119px] object-contain"
         />
       </Link>
 
