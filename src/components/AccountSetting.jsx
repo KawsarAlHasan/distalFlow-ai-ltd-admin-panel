@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { UserOutlined, CameraOutlined, EditOutlined } from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { UserOutlined, CameraOutlined } from "@ant-design/icons";
 import {
   Button,
   Modal,
@@ -8,7 +8,6 @@ import {
   message,
   Avatar,
   Upload,
-  Space,
 } from "antd";
 import { API } from "../api/api";
 
@@ -17,6 +16,7 @@ const AccountSetting = ({ adminProfile, refetch }) => {
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [form] = Form.useForm();
 
   const showModal = () => setIsModalOpen(true);
   const handleCancel = () => {
@@ -24,6 +24,18 @@ const AccountSetting = ({ adminProfile, refetch }) => {
     setImageFile(null);
     setIsModalOpen(false);
   };
+
+  useEffect(() => {
+    if (isModalOpen && adminProfile) {
+      form.setFieldsValue({
+        name: adminProfile.name || "",
+        email: adminProfile.email || "",
+        phone: adminProfile.phone || "",
+        role: adminProfile.roleName || "Super Admin",
+      });
+      setSelectedImage(adminProfile.profilePic || null);
+    }
+  }, [isModalOpen, adminProfile, form]);
 
   const handleImageSelect = (file) => {
     setImageFile(file);
@@ -43,7 +55,7 @@ const AccountSetting = ({ adminProfile, refetch }) => {
 
       const formData = new FormData();
       formData.append("name", values.name);
-      formData.append("phone", values.phone);
+      if (values.phone) formData.append("phone", values.phone);
 
       if (imageFile) {
         formData.append("image", imageFile);
@@ -70,14 +82,14 @@ const AccountSetting = ({ adminProfile, refetch }) => {
   };
 
   const beforeUpload = (file) => {
-    const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
+    const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp";
     if (!isJpgOrPng) {
-      message.error("You can only upload JPG/PNG file!");
+      message.error("You can only upload JPG, PNG or WEBP image!");
       return false;
     }
-    const isLt2M = file.size / 1024 / 1024 < 2;
+    const isLt2M = file.size / 1024 / 1024 < 4;
     if (!isLt2M) {
-      message.error("Image must smaller than 2MB!");
+      message.error("Image must be smaller than 4MB!");
       return false;
     }
     return true;
@@ -99,6 +111,7 @@ const AccountSetting = ({ adminProfile, refetch }) => {
         onCancel={handleCancel}
         footer={null}
         width={500}
+        destroyOnClose
       >
         <div className="flex flex-col items-center">
           <div className="relative mb-4">
@@ -113,12 +126,12 @@ const AccountSetting = ({ adminProfile, refetch }) => {
               name="avatar"
               showUploadList={false}
               beforeUpload={beforeUpload}
-              accept="image/jpeg,image/png"
+              accept="image/jpeg,image/png,image/webp"
               customRequest={({ file, onSuccess }) => {
                 onSuccess("ok");
               }}
               onChange={(info) => {
-                if (info.file.status === "done") {
+                if (info.file.status === "done" && info.file.originFileObj) {
                   handleImageSelect(info.file.originFileObj);
                 }
               }}
@@ -129,64 +142,58 @@ const AccountSetting = ({ adminProfile, refetch }) => {
                 icon={<CameraOutlined />}
                 size="small"
                 className="absolute -bottom-1 -right-1 shadow-md"
-                style={{ backgroundColor: "#1890ff" }}
+                style={{ backgroundColor: "#1E0F22", borderColor: "#C8A96E" }}
               />
             </Upload>
           </div>
 
-          {selectedImage && (
-            <p className="text-green-600 text-sm mb-2">
+          {selectedImage && selectedImage !== adminProfile?.profilePic && (
+            <p className="text-emerald-700 text-xs mb-2">
               New image selected. Click "Update Profile" to save changes.
             </p>
           )}
         </div>
 
         <Form
+          form={form}
           layout="vertical"
           onFinish={handleFinish}
-          initialValues={{
-            name: adminProfile?.name,
-            email: adminProfile?.email,
-            phone: adminProfile?.phone,
-            role: adminProfile?.roleName,
-          }}
         >
           <Form.Item
             label="Name"
             name="name"
             rules={[{ required: true, message: "Please enter your name" }]}
           >
-            <Input prefix={<UserOutlined />} />
+            <Input prefix={<UserOutlined />} placeholder="Your full name" className="h-10 rounded-lg" />
           </Form.Item>
 
           <Form.Item label="Email" name="email">
-            <Input disabled />
+            <Input disabled className="h-10 rounded-lg bg-gray-50" />
           </Form.Item>
 
           <Form.Item
             label="Phone Number"
             name="phone"
             rules={[
-              { required: true, message: "Please enter your phone number" },
+              { required: false },
             ]}
           >
-            <Input />
+            <Input placeholder="Enter your contact phone" className="h-10 rounded-lg" />
           </Form.Item>
 
           <Form.Item label="Role" name="role">
-            <Input disabled />
+            <Input disabled className="h-10 rounded-lg bg-gray-50" />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item className="mt-6 mb-0">
             <Button
-              className="my-main-button"
-              block
+              className="my-main-button w-full h-11 rounded-lg font-semibold"
               type="primary"
               size="large"
               htmlType="submit"
               loading={loading}
             >
-              Update Profile
+              {loading ? "Updating..." : "Update Profile"}
             </Button>
           </Form.Item>
         </Form>

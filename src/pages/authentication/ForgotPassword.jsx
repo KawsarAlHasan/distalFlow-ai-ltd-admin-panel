@@ -11,23 +11,15 @@ const ForgotPassword = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const response = await API.post("/auth/admin/forgot-password", {
+      await API.post("/auth/admin/forgot-password", {
         email: values.email,
       });
 
-      if (response.status == 200) {
-        message.success(
-          "Reset code sent successfully! Please check your email.",
-        );
+      message.success(
+        "Reset code sent successfully! Please check your email.",
+      );
 
-        // Save the email and user type in localStorage
-        localStorage.setItem("email", values.email);
-
-        setTimeout(() => {
-          navigate("/check-code");
-        }, 500);
-      }
-
+      // Save email for next step
       localStorage.setItem("email", values.email);
 
       setTimeout(() => {
@@ -75,8 +67,7 @@ const ForgotPassword = () => {
 
         {/* Subtitle */}
         <p className="text-center text-[#A1A1AA] text-[16px] mb-5 lg:mb-10">
-          No worries! Enter your email address and we'll send you a verification
-          code to reset your password
+          Enter your admin email and we'll send you a 6-digit verification code to reset your password.
         </p>
 
         {/* Form */}
